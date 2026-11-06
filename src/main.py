@@ -53,7 +53,13 @@ menuOptions = {
         {
             "name": "Games",
             "subMenus": [
+                {"name": "秒表", "packageName": "games.stopwatch", "defer": True},
                 {"name": "俄罗斯方块", "packageName": "games.tetris"},
+                {"name": "恐龙快跑", "packageName": "games.dino_run"},
+                {"name": "超级玛丽", "packageName": "games.mario_run"},
+                {"name": "极速公路", "packageName": "games.fc_racing"},
+                {"name": "毁灭公爵", "packageName": "games.doom"},
+                {"name": "国际象棋", "packageName": "games.chess"},
                 {"name": "推箱子", "packageName": "games.sokoban"},
                 {"name": "猜数字", "packageName": "games.guess_number"},
                 {"name": "迷宫", "packageName": "games.maze"},
@@ -122,6 +128,14 @@ class Context:
         else:
             mod.run(self)
 
+    def defer_callback(self, package_name):
+        """Start a package after the current menu interrupt has returned."""
+        import micropython
+        micropython.schedule(self.run_deferred_callback, package_name)
+
+    def run_deferred_callback(self, package_name):
+        self.common_callback(package_name)
+
     def build_menu(self, cfg):
         is_root = "title" in cfg and "name" not in cfg
         name = cfg.get("name", "")
@@ -164,7 +178,10 @@ class Context:
             elif "packageName" in sub:
                 pkg = sub["packageName"]
                 params = sub.get("params")
-                if params:
+                if sub.get("defer"):
+                    item.add(MenuItem(sub["name"],
+                        callback=lambda p=pkg: self.defer_callback(p)))
+                elif params:
                     item.add(MenuItem(sub["name"],
                         callback=lambda p=pkg, ps=params: self.common_callback(p, ps)))
                 else:
