@@ -128,7 +128,18 @@ static mp_obj_t c3d_render_mesh_call(size_t n_args, const mp_obj_t *args) {
         .scale = c3d_float(args[7]),
         .center_x = c3d_float(center[0]),
         .center_y = c3d_float(center[1]),
+        .cam_x = 0.0,
+        .cam_y = 0.0,
+        .cam_z = 0.0,
     };
+    /* Optional 12th arg: cam_pos = (cam_x, cam_y, cam_z). */
+    if (n_args >= 12 && args[11] != mp_const_none) {
+        mp_obj_t *cam_pos;
+        mp_obj_get_array_fixed_n(args[11], 3, &cam_pos);
+        camera.cam_x = c3d_float(cam_pos[0]);
+        camera.cam_y = c3d_float(cam_pos[1]);
+        camera.cam_z = c3d_float(cam_pos[2]);
+    }
     if (camera.distance <= 0 || camera.focal <= 0) {
         mp_raise_ValueError(MP_ERROR_TEXT("distance and focal must be positive"));
     }
@@ -162,7 +173,7 @@ static mp_obj_t c3d_render_mesh_call(size_t n_args, const mp_obj_t *args) {
     }
     return result;
 }
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(c3d_render_mesh_fun_obj, 10, 11,
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(c3d_render_mesh_fun_obj, 10, 12,
                                            c3d_render_mesh_call);
 
 static const mp_rom_map_elem_t c3d_module_globals_table[] = {

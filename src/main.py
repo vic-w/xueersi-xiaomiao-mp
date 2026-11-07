@@ -64,6 +64,8 @@ menuOptions = {
                 {"name": "猜数字", "packageName": "games.guess_number"},
                 {"name": "迷宫", "packageName": "games.maze"},
                 {"name": "立方体屏保", "packageName": "games.cube_screensaver"},
+                {"name": "滑雪企鹅", "packageName": "games.penguin_ski"},
+                {"name": "3D赛车", "packageName": "games.racing3d"},
                 {"name": "上级菜单", "type": "back"},
             ]
         },

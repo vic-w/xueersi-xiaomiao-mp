@@ -31,6 +31,12 @@ typedef struct {
     float scale;
     float center_x;
     float center_y;
+    /* Camera translation (world-space camera position). After mesh rotation
+       the vertex is translated by (-cam_x, -cam_y, -cam_z) so the camera
+       can orbit the scene. Default 0 (no translation) keeps old behavior. */
+    float cam_x;
+    float cam_y;
+    float cam_z;
 } c3d_camera_t;
 
 typedef struct {

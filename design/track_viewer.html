@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>3D 赛道浏览器</title>
+<style>
+  body { margin: 0; background: #101018; color: #ddd; font-family: sans-serif; display: flex; }
+  #panel { width: 230px; padding: 16px; background: #1a1a2e; font-size: 13px; line-height: 1.7; }
+  canvas { display: block; }
+  button { background: #F800; color: #fff; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; margin-top: 8px; }
+  input { width: 100%; background: #101018; color: #fff; border: 1px solid #333; padding: 6px; border-radius: 4px; box-sizing: border-box; }
+  .legend span { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <b>3D 赛道浏览器</b>
+  <p>与设备端 <code>racing3d.py</code> 同一套：
+     8×8 可平铺高度场 + random-walk 路点。</p>
+  <p><b>WASD</b> 前后左右<br>
+     <b>Q/E</b> 升降<br>
+     鼠标拖拽旋转视角<br>
+     滚轮缩放</p>
+  <label>随机种子</label>
+  <input id="seed" value="1">
+  <button onclick="rebuild()">重新生成</button>
+  <p class="legend">
+    <span style="background:#808080"></span>灰色路面<br>
+    <span style="background:linear-gradient(90deg,red 50%,white 50%)"></span>红白路缘<br>
+    <span style="background:#07E0"></span>检查点门<br>
+    <span style="background:#2B42"></span>草地
+  </p>
+  <p id="stats"></p>
+</div>
+<canvas id="cv"></canvas>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// --- Deterministic RNG ---
+let _s = 1;
+function seed(n) { _s = n >>> 0; }
+function rand() {
+  _s = (_s * 1664525 + 1013904223) >>> 0;
+  return _s / 4294967296;
+}
+
+// --- Heightmap (port of Heightmap) ---
+const TILE_N = 8;
+const TILE_SCALE = 0.08;
+let grid = [];
+function genGrid() {
+  grid = [];
+  for (let z = 0; z < TILE_N; z++) {
+    const row = [];
+    for (let x = 0; x < TILE_N; x++) row.push((rand() * 2 - 1) * 1.4);
+    grid.push(row);
+  }
+}
+function smooth(t) { return t * t * (3 - 2 * t); }
+function sample(x, z) {
+  const gx = x * TILE_SCALE, gz = z * TILE_SCALE;
+  const x0 = Math.floor(gx), z0 = Math.floor(gz);
+  const fx = smooth(gx - x0), fz = smooth(gz - z0);
+  const ix0 = ((x0 % TILE_N) + TILE_N) % TILE_N;
+  const iz0 = ((z0 % TILE_N) + TILE_N) % TILE_N;
+  const ix1 = (ix0 + 1) % TILE_N, iz1 = (iz0 + 1) % TILE_N;
+  const h00 = grid[iz0][ix0], h01 = grid[iz0][ix1];
+  const h10 = grid[iz1][ix0], h11 = grid[iz1][ix1];
+  return h00*(1-fx)*(1-fz) + h01*fx*(1-fz) + h10*(1-fx)*fz + h11*fx*fz;
+}
+
+// --- Waypoints: monotonic meander (no self-crossing) ---
+const WP_COUNT = 500;
+const WP_STEP = 20.0;
+const ROAD_HALF_W = 6.0;
+let waypoints = [];
+function genWaypoints() {
+  waypoints = [[0, 0]];
+  for (let i = 1; i < WP_COUNT; i++) {
+    const z = i * WP_STEP;
+    const x = Math.sin(i * 0.15) * 60 + Math.sin(i * 0.04) * 40 + (rand() * 16 - 8);
+    waypoints.push([x, z]);
+  }
+}
+
+// --- Three.js ---
+const canvas = document.getElementById('cv');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x957F);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 5000);
+// Camera orientation: yaw (around Y) and pitch (up/down).
+let yaw = 0, pitch = -0.35;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(20, 40, 10);
+scene.add(sun);
+
+let terrainMesh = null, roadMesh = null, gateGroup = null;
+
+function buildTerrain() {
+  if (terrainMesh) {
+    scene.remove(terrainMesh);
+    terrainMesh.geometry.dispose();
+    terrainMesh.material.dispose();
+  }
+  // Big rectangle covering the whole track (z: 0..10000, x: ±~200).
+  // Heightmap wraps so terrain is continuous everywhere on this plane.
+  const WIDTH = 2000, LENGTH = 12000;
+  const geo = new THREE.PlaneGeometry(WIDTH, LENGTH, 50, 200);
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(0, 0, 5000);   // center on the track midpoint (z=5000)
+  const pos = geo.attributes.position;
+  const colors = [];
+  const grass = new THREE.Color(0x2B42);
+  const grassHi = new THREE.Color(0x4a6a3a);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const h = sample(x, z);
+    pos.setY(i, h);
+    const c = grass.clone().lerp(grassHi, (h + 1.5) / 3);
+    colors.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  terrainMesh = new THREE.Mesh(geo,
+    new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true }));
+  scene.add(terrainMesh);
+}
+
+function buildRoad() {
+  if (roadMesh) { scene.remove(roadMesh); roadMesh.geometry.dispose(); }
+  // Three ribbons: main road (gray) + left/right curbs (red/white stripes).
+  // 4 verts per waypoint: left-curb-outer, left-curb-inner, right-curb-inner, right-curb-outer.
+  const positions = [];
+  const colors = [];
+  const indices = [];
+  const CURB_W = 1.5;
+  const gray = new THREE.Color(0x808080);
+  const red = new THREE.Color(0xFF0000);
+  const white = new THREE.Color(0xFFFFFF);
+
+  for (let i = 0; i < waypoints.length; i++) {
+    const [x, z] = waypoints[i];
+    const prev = waypoints[Math.max(0, i - 1)];
+    const next = waypoints[Math.min(waypoints.length - 1, i + 1)];
+    const dx = next[0] - prev[0], dz = next[1] - prev[1];
+    const len = Math.hypot(dx, dz) || 1;
+    const nx = dz / len, nz = -dx / len;
+    // Alternate red/white every 2 waypoints (40m) for curb stripes.
+    const curbColor = (Math.floor(i / 2) % 2 === 0) ? red : white;
+
+    const pts = [
+      [x + nx * (ROAD_HALF_W + CURB_W), z + nz * (ROAD_HALF_W + CURB_W)],
+      [x + nx * ROAD_HALF_W, z + nz * ROAD_HALF_W],
+      [x - nx * ROAD_HALF_W, z - nz * ROAD_HALF_W],
+      [x - nx * (ROAD_HALF_W + CURB_W), z - nz * (ROAD_HALF_W + CURB_W)],
+    ];
+    for (const [px, pz] of pts) {
+      positions.push(px, sample(px, pz) + 1.5, pz);
+    }
+    // [outer-left=curb, inner-left=gray, inner-right=gray, outer-right=curb]
+    colors.push(curbColor.r, curbColor.g, curbColor.b);
+    colors.push(gray.r, gray.g, gray.b);
+    colors.push(gray.r, gray.g, gray.b);
+    colors.push(curbColor.r, curbColor.g, curbColor.b);
+
+    if (i < waypoints.length - 1) {
+      const a = i * 4;
+      // Left curb strip
+      indices.push(a, a + 1, a + 4, a + 1, a + 5, a + 4);
+      // Main road
+      indices.push(a + 1, a + 2, a + 5, a + 2, a + 6, a + 5);
+      // Right curb strip
+      indices.push(a + 2, a + 3, a + 6, a + 3, a + 7, a + 6);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  roadMesh = new THREE.Mesh(geo,
+    new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  scene.add(roadMesh);
+}
+
+function buildGates() {
+  if (gateGroup) {
+    scene.remove(gateGroup);
+    gateGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); });
+  }
+  gateGroup = new THREE.Group();
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x00e000 });
+  const bannerMat = new THREE.MeshStandardMaterial({ color: 0xfd20 });
+  for (let i = 0; i < waypoints.length; i += 25) {
+    const [x, z] = waypoints[i];
+    const h = sample(x, z) + 1.5;
+    const post = new THREE.CylinderGeometry(0.5, 0.5, 8, 6);
+    const p1 = new THREE.Mesh(post, postMat);
+    p1.position.set(x - ROAD_HALF_W - 1, h + 4, z);
+    const p2 = new THREE.Mesh(post, postMat);
+    p2.position.set(x + ROAD_HALF_W + 1, h + 4, z);
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(ROAD_HALF_W * 2 + 2, 1.5, 0.5), bannerMat);
+    banner.position.set(x, h + 8, z);
+    gateGroup.add(p1, p2, banner);
+  }
+  scene.add(gateGroup);
+}
+
+function rebuild() {
+  const n = parseInt(document.getElementById('seed').value) || 1;
+  seed(n);
+  genGrid();
+  genWaypoints();
+
+  buildTerrain();
+  buildRoad();
+  buildGates();
+
+  // High overview: see the whole 10km winding track from above.
+  camera.position.set(0, 1200, 5500);
+  yaw = 0; pitch = -1.45;
+
+  const total = waypoints.length * WP_STEP / 1000;
+  document.getElementById('stats').innerHTML =
+    `路点: ${waypoints.length}<br>总长: ${total.toFixed(1)} km<br>灰色路面 红白路缘 绿门=检查点`;
+}
+window.rebuild = rebuild;   // expose to onclick
+
+// --- Keyboard + mouse navigation ---
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+let dragging = false, lastX = 0, lastY = 0;
+canvas.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  yaw -= (e.clientX - lastX) * 0.005;
+  pitch -= (e.clientY - lastY) * 0.005;
+  pitch = Math.max(-1.5, Math.min(0.5, pitch));
+  lastX = e.clientX; lastY = e.clientY;
+});
+
+function updateCamera(dt) {
+  const speed = 50 * dt;
+  // Forward direction from yaw/pitch.
+  const fx = -Math.sin(yaw) * Math.cos(pitch);
+  const fy = Math.sin(pitch);
+  const fz = -Math.cos(yaw) * Math.cos(pitch);
+  // Right vector (perpendicular on horizontal plane).
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+
+  if (keys['w']) { camera.position.x += fx * speed; camera.position.z += fz * speed; camera.position.y += fy * speed; }
+  if (keys['s']) { camera.position.x -= fx * speed; camera.position.z -= fz * speed; camera.position.y -= fy * speed; }
+  if (keys['a']) { camera.position.x -= rx * speed; camera.position.z -= rz * speed; }
+  if (keys['d']) { camera.position.x += rx * speed; camera.position.z += rz * speed; }
+  if (keys['q']) camera.position.y -= speed;
+  if (keys['e']) camera.position.y += speed;
+
+  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+rebuild();
+let lastT = performance.now();
+(function animate(t) {
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.1, (t - lastT) / 1000);
+  lastT = t;
+  updateCamera(dt);
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

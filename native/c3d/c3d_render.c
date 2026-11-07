@@ -197,6 +197,11 @@ void c3d_render_mesh(uint8_t *buffer, size_t buffer_len, int width, int height,
         x = rotated_x;
         y = rotated_y;
 
+        /* Camera translation: move world so camera sits at origin. */
+        x -= camera->cam_x;
+        y -= camera->cam_y;
+        z -= camera->cam_z;
+
         depth = z + camera->distance;
         projected[vertex_index].depth = depth;
         projected[vertex_index].valid = isfinite(depth) && depth > 0.12f;

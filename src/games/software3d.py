@@ -93,10 +93,10 @@ class Software3D:
 
     def draw_prepared_mesh(self, mesh, angles=(0.0, 0.0, 0.0),
                            scale=1.0, center=None, edge_color=None,
-                           return_projection=True):
+                           return_projection=True, cam_pos=None):
         if self._native is not None:
             center_x, center_y = center or (self.center_x, self.center_y)
-            return self._native.render_mesh(
+            args = [
                 self.display.buffer,
                 self.width,
                 self.height,
@@ -108,7 +108,10 @@ class Software3D:
                 (center_x, center_y),
                 edge_color,
                 return_projection,
-            )
+            ]
+            if cam_pos is not None:
+                args.append(tuple(cam_pos))
+            return self._native.render_mesh(*args)
         return self.draw_mesh(
             mesh[0], mesh[1], angles, scale, center, edge_color,
             return_projection,
