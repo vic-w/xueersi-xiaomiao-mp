@@ -24,9 +24,10 @@ except ImportError:
 
 SCREEN_WIDTH = 160
 SCREEN_HEIGHT = 128
-CELL = 14
-BOARD_X = 24
-BOARD_Y = 16
+CELL = 15
+BOARD_X = 20
+BOARD_Y = 8
+HUD_HEIGHT = 8
 
 COLOR_BLACK = 0x0000
 COLOR_WHITE = 0xFFFF
@@ -57,6 +58,118 @@ PIECE_VALUES = {
     "K": 20000,
 }
 
+
+def _compile_piece_icon(rows):
+    """Turn a 13x13 pixel mask into horizontal runs for fast drawing."""
+    spans = []
+    for row in rows:
+        runs = []
+        start = -1
+        for col in range(len(row) + 1):
+            filled = col < len(row) and row[col] == "#"
+            if filled and start < 0:
+                start = col
+            elif not filled and start >= 0:
+                runs.append((start, col))
+                start = -1
+        spans.append(tuple(runs))
+    return tuple(spans)
+
+
+PIECE_ICONS = {
+    "K": _compile_piece_icon((
+        "......#......",
+        "....#####....",
+        "......#......",
+        "..##..#..##..",
+        ".###########.",
+        ".###########.",
+        "..#########..",
+        "...#######...",
+        "...#######...",
+        "....#####....",
+        "..#########..",
+        ".###########.",
+        "#############",
+    )),
+    "Q": _compile_piece_icon((
+        "......#......",
+        "..#..###..#..",
+        "..##.###.##..",
+        "..#.##.##.#..",
+        ".###########.",
+        "..#########..",
+        "...#######...",
+        "....#####....",
+        "....#####....",
+        "...#######...",
+        "..#########..",
+        ".###########.",
+        ".###########.",
+    )),
+    "R": _compile_piece_icon((
+        ".............",
+        "..##.###.##..",
+        "..##.###.##..",
+        "..#########..",
+        "..#########..",
+        "...#######...",
+        "...#######...",
+        "...#######...",
+        "...#######...",
+        "..#########..",
+        "..#########..",
+        ".###########.",
+        ".###########.",
+    )),
+    "B": _compile_piece_icon((
+        "......#......",
+        ".....###.....",
+        "....###......",
+        "....###.#....",
+        "...###..##...",
+        "...##..###...",
+        "...##.####...",
+        "....#####....",
+        "....#####....",
+        "...#######...",
+        "..#########..",
+        ".###########.",
+        "#############",
+    )),
+    "N": _compile_piece_icon((
+        "....##.......",
+        "...######....",
+        "..########...",
+        ".##########..",
+        ".#####...##..",
+        ".######......",
+        ".#######.....",
+        ".########....",
+        ".########....",
+        "..#######....",
+        "...#####.....",
+        "..#######....",
+        ".#########...",
+    )),
+    "P": _compile_piece_icon((
+        ".............",
+        ".............",
+        "......#......",
+        ".....###.....",
+        "....#####....",
+        ".....###.....",
+        "....#####....",
+        "....#####....",
+        "....#####....",
+        "...#######...",
+        "..#########..",
+        "..#########..",
+        "..#########..",
+    )),
+}
+
+
 KNIGHT_STEPS = (
     (-2, -1), (-2, 1), (-1, -2), (-1, 2),
     (1, -2), (1, 2), (2, -1), (2, 1),
@@ -69,6 +182,7 @@ KING_STEPS = BISHOP_DIRECTIONS + ROOK_DIRECTIONS
 AI_DEPTH = 2
 AI_TIME_LIMIT_MS = 4500
 SUNFISH_LEVEL = 2
+CHECKMATE_TONES = ((523, 90), (659, 90), (784, 90), (1047, 180))
 
 
 class ChessGame:
@@ -87,6 +201,11 @@ class ChessGame:
             self.sound.beep(frequency, duration)
         except Exception:
             pass
+
+    def _play_checkmate_sound(self):
+        for frequency, duration in CHECKMATE_TONES:
+            self._beep(frequency, duration)
+            time.sleep_ms(25)
 
     def _reset(self):
         self.board = []
@@ -548,14 +667,18 @@ class ChessGame:
         return best_move
 
     def _finish_if_needed(self):
+        if self.mode == "over":
+            return True
         self.legal_moves = self._generate_legal_moves()
         self.in_check = self._in_check(self.side)
         if not self.legal_moves:
             if self.in_check:
                 self.result = "lose" if self.side == "w" else "win"
+                self.mode = "over"
+                self._play_checkmate_sound()
             else:
                 self.result = "draw"
-            self.mode = "over"
+                self.mode = "over"
             return True
         if self.halfmove >= 100 or self._insufficient_material():
             self.result = "draw"
@@ -752,16 +875,17 @@ class ChessGame:
                 if piece == ".":
                     continue
                 piece_color = COLOR_WHITE if piece.isupper() else COLOR_BLACK
-                piece_background = COLOR_BLACK if piece.isupper() else COLOR_WHITE
-                piece_x = BOARD_X + col * CELL + 3
-                piece_y = BOARD_Y + row * CELL + 3
-                self.disp.fill_rect(piece_x, piece_y, 8, 8, piece_background)
-                self.disp.text(
-                    piece.upper(),
-                    piece_x,
-                    piece_y,
-                    piece_color,
-                )
+                piece_x = BOARD_X + col * CELL + 1
+                piece_y = BOARD_Y + row * CELL + 1
+                for icon_row, runs in enumerate(PIECE_ICONS[piece.upper()]):
+                    for run_start, run_end in runs:
+                        self.disp.fill_rect(
+                            piece_x + run_start,
+                            piece_y + icon_row,
+                            run_end - run_start,
+                            1,
+                            piece_color,
+                        )
 
         if self.selected is not None:
             row = self.selected // 8
@@ -780,9 +904,9 @@ class ChessGame:
         self.disp.rect(x + 1, y + 1, CELL - 2, CELL - 2, COLOR_RED)
 
     def _draw_hud(self):
-        self.disp.fill_rect(0, 0, SCREEN_WIDTH, 16, COLOR_BLACK)
+        self.disp.fill_rect(0, 0, SCREEN_WIDTH, HUD_HEIGHT, COLOR_BLACK)
         engine_name = "SUNFISH" if self.sunfish_game is not None else "CHESS"
-        self.disp.text(engine_name, 2, 4, COLOR_YELLOW)
+        self.disp.text(engine_name, 2, 0, COLOR_YELLOW)
         if self.result == "win":
             status = "YOU WIN"
         elif self.result == "lose":
@@ -797,7 +921,7 @@ class ChessGame:
             status = "YOU"
         else:
             status = "CPU"
-        self.disp.text(status, SCREEN_WIDTH - len(status) * 8 - 2, 4, COLOR_WHITE)
+        self.disp.text(status, SCREEN_WIDTH - len(status) * 8 - 2, 0, COLOR_WHITE)
 
     def _draw_overlay(self):
         if self.mode == "ready":
@@ -807,18 +931,6 @@ class ChessGame:
             self.disp.text("YOU: WHITE", 48, 63, COLOR_WHITE)
             self.disp.text("A START", 52, 76, COLOR_CYAN)
             self.disp.text("B EXIT", 56, 86, COLOR_GREY)
-        elif self.mode == "over":
-            self.disp.fill_rect(18, 39, 124, 58, COLOR_BLACK)
-            self.disp.rect(18, 39, 124, 58, COLOR_YELLOW)
-            if self.result == "win":
-                title = "CHECKMATE!"
-            elif self.result == "lose":
-                title = "YOU LOSE"
-            else:
-                title = "DRAW"
-            self.disp.text(title, 80 - len(title) * 4, 48, COLOR_YELLOW)
-            self.disp.text("A REMATCH", 44, 64, COLOR_WHITE)
-            self.disp.text("B EXIT", 56, 78, COLOR_CYAN)
 
     def _draw(self):
         self.disp.fill(COLOR_BLACK)

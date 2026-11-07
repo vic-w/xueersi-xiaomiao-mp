@@ -1,0 +1,339 @@
+<div id="chess-piece-complete" class="chess-piece-complete">
+  <style>
+    #chess-piece-complete {
+      --ink: light-dark(#242019, #f5efe3);
+      --muted-ink: light-dark(#756f64, #aaa397);
+      --line: light-dark(#ded8cc, #403b34);
+      --panel: light-dark(#fbf8f1, #24211c);
+      --panel-soft: light-dark(#f3eee4, #2d2923);
+      --board-light: #d6d6ad;
+      --board-dark: #6b6b6b;
+      color: var(--ink);
+      display: grid;
+      gap: calc(var(--font-size-base) * 0.75);
+      width: 100%;
+    }
+
+    #chess-piece-complete h1,
+    #chess-piece-complete p {
+      margin: 0;
+    }
+
+    #chess-piece-complete .intro {
+      display: grid;
+      gap: calc(var(--font-size-base) * 0.25);
+    }
+
+    #chess-piece-complete .intro p {
+      color: var(--muted-ink);
+    }
+
+    #chess-piece-complete .piece-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: calc(var(--font-size-base) * 0.75);
+      padding: calc(var(--font-size-base) * 0.75);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+    }
+
+    #chess-piece-complete .piece-card {
+      display: grid;
+      gap: calc(var(--font-size-base) * 0.6);
+      min-width: 0;
+      padding: calc(var(--font-size-base) * 0.65);
+      border-radius: 14px;
+      background: var(--panel-soft);
+    }
+
+    #chess-piece-complete .piece-name {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: calc(var(--font-size-base) * 0.4);
+    }
+
+    #chess-piece-complete .piece-name strong {
+      font-size: calc(var(--font-size-base) * 1.1);
+      font-weight: 500;
+    }
+
+    #chess-piece-complete .piece-name span,
+    #chess-piece-complete .size-label,
+    #chess-piece-complete .side-label,
+    #chess-piece-complete .legend {
+      color: var(--muted-ink);
+      font-size: 11px;
+    }
+
+    #chess-piece-complete .preview-pair,
+    #chess-piece-complete .actual-pair {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: calc(var(--font-size-base) * 0.5);
+    }
+
+    #chess-piece-complete .preview-item {
+      display: grid;
+      justify-items: center;
+      gap: calc(var(--font-size-base) * 0.2);
+    }
+
+    #chess-piece-complete .preview-cell {
+      display: grid;
+      place-items: center;
+      width: 84px;
+      height: 84px;
+      border-radius: 4px;
+      box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+    }
+
+    #chess-piece-complete .actual-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: calc(var(--font-size-base) * 0.35);
+      padding-top: calc(var(--font-size-base) * 0.45);
+      border-top: 1px solid rgb(127 127 127 / 18%);
+    }
+
+    #chess-piece-complete .actual-pair {
+      gap: calc(var(--font-size-base) * 0.3);
+    }
+
+    #chess-piece-complete .actual-cell {
+      display: grid;
+      place-items: center;
+      width: 14px;
+      height: 14px;
+      box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 16%);
+    }
+
+    #chess-piece-complete canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    #chess-piece-complete canvas.large {
+      width: 84px;
+      height: 84px;
+    }
+
+    #chess-piece-complete canvas.actual {
+      width: 14px;
+      height: 14px;
+    }
+
+    @media (max-width: 620px) {
+      #chess-piece-complete .piece-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #chess-piece-complete .preview-cell {
+        width: 58px;
+        height: 58px;
+      }
+
+      #chess-piece-complete canvas.large {
+        width: 58px;
+        height: 58px;
+      }
+    }
+  </style>
+
+  <div class="intro">
+    <h1>完整棋子图标</h1>
+    <p>13×13 像素 · 14×14 棋盘格 · 无底色 · 前景色直接显示</p>
+  </div>
+
+  <div id="complete-piece-grid" class="piece-grid" aria-label="六种国际象棋棋子设计"></div>
+  <div class="legend">左：白方 · 右：黑方 · 下方为实机尺寸</div>
+
+  <script>
+    (() => {
+      const pieces = [
+        { key: "king", cn: "王", en: "KING" },
+        { key: "queen", cn: "后", en: "QUEEN" },
+        { key: "rook", cn: "车", en: "ROOK" },
+        { key: "bishop", cn: "相", en: "BISHOP" },
+        { key: "knight", cn: "马", en: "KNIGHT" },
+        { key: "pawn", cn: "兵", en: "PAWN" }
+      ];
+
+      const icons = {
+        king: [
+          "......#......",
+          "....#####....",
+          "......#......",
+          "..##..#..##..",
+          ".###########.",
+          ".###########.",
+          "..#########..",
+          "...#######...",
+          "...#######...",
+          "....#####....",
+          "..#########..",
+          ".###########.",
+          "#############"
+        ],
+        queen: [
+          "..#...#...#..",
+          "..##.#.#.##..",
+          ".###########.",
+          "..#.##.##.#..",
+          ".###########.",
+          "..#########..",
+          "...#######...",
+          "....#####....",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          "#############",
+          "............."
+        ],
+        rook: [
+          ".............",
+          ".............",
+          "..##.###.##..",
+          "..#########..",
+          "..#########..",
+          "...#######...",
+          "...#######...",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          ".###########.",
+          "#############",
+          "............."
+        ],
+        bishop: [
+          ".............",
+          "......#......",
+          ".....###.....",
+          "....#.###....",
+          "...###.###...",
+          "...####.##...",
+          "..######.##..",
+          "....#####....",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          ".###########.",
+          "#############"
+        ],
+        knight: [
+          "....##.##....",
+          "...######....",
+          "..#######....",
+          ".#####.#.....",
+          "######..###..",
+          "#######..###.",
+          "#########....",
+          "#########....",
+          ".########....",
+          "..#######....",
+          "...#####.....",
+          "..#######....",
+          ".#########..."
+        ],
+        pawn: [
+          ".............",
+          ".............",
+          ".............",
+          ".............",
+          "......#......",
+          ".....###.....",
+          "....#####....",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          ".............",
+          ".............",
+          "............."
+        ]
+      };
+
+      const grid = document.getElementById("complete-piece-grid");
+
+      const makeCanvas = (piece, side, size) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 14;
+        canvas.height = 14;
+        canvas.className = size;
+        canvas.dataset.piece = piece.key;
+        canvas.dataset.side = side;
+        canvas.setAttribute("role", "img");
+        canvas.setAttribute(
+          "aria-label",
+          `${piece.cn}，${side === "white" ? "白方" : "黑方"}${size === "large" ? "放大预览" : "实机尺寸"}`
+        );
+        return canvas;
+      };
+
+      pieces.forEach((piece) => {
+        const card = document.createElement("article");
+        card.className = "piece-card";
+
+        const title = document.createElement("div");
+        title.className = "piece-name";
+        const name = document.createElement("strong");
+        name.textContent = piece.cn;
+        const english = document.createElement("span");
+        english.textContent = piece.en;
+        title.append(name, english);
+
+        const preview = document.createElement("div");
+        preview.className = "preview-pair";
+        ["white", "black"].forEach((side) => {
+          const item = document.createElement("div");
+          item.className = "preview-item";
+          const cell = document.createElement("div");
+          cell.className = "preview-cell";
+          cell.append(makeCanvas(piece, side, "large"));
+          const label = document.createElement("span");
+          label.className = "side-label";
+          label.textContent = side === "white" ? "白方" : "黑方";
+          item.append(cell, label);
+          preview.append(item);
+        });
+
+        const actualRow = document.createElement("div");
+        actualRow.className = "actual-row";
+        const actualPair = document.createElement("div");
+        actualPair.className = "actual-pair";
+        ["white", "black"].forEach((side) => {
+          const cell = document.createElement("div");
+          cell.className = "actual-cell";
+          cell.append(makeCanvas(piece, side, "actual"));
+          actualPair.append(cell);
+        });
+        const sizeLabel = document.createElement("span");
+        sizeLabel.className = "size-label";
+        sizeLabel.textContent = "实机尺寸";
+        actualRow.append(actualPair, sizeLabel);
+
+        card.append(title, preview, actualRow);
+        grid.append(card);
+      });
+
+      grid.querySelectorAll("canvas").forEach((canvas) => {
+        const side = canvas.dataset.side;
+        const pixels = icons[canvas.dataset.piece];
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = side === "white" ? "#d6d6ad" : "#6b6b6b";
+        ctx.fillRect(0, 0, 14, 14);
+        ctx.fillStyle = side === "white" ? "#ffffff" : "#000000";
+        pixels.forEach((row, y) => {
+          [...row].forEach((pixel, x) => {
+            if (pixel === "#") {
+              ctx.fillRect(x, y, 1, 1);
+            }
+          });
+        });
+      });
+    })();
+  </script>
+</div>

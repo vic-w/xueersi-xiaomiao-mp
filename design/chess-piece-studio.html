@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>小喵国际象棋 · 棋子设计器</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10120e;
+      --panel: #191c16;
+      --panel-raised: #20241c;
+      --line: #343a2d;
+      --line-strong: #4b523e;
+      --text: #f1ead9;
+      --muted: #9d9b8f;
+      --accent: #efb641;
+      --accent-soft: #44371c;
+      --danger: #f07167;
+      --board-light: #d6d6ad;
+      --board-dark: #6b6b6b;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% -10%, #32351f 0, transparent 34rem),
+        linear-gradient(180deg, #11130f 0%, #0d0f0b 100%);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .app {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 36px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: grid;
+      gap: 5px;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(24px, 4vw, 40px);
+      font-weight: 500;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle,
+    .meta,
+    .hint,
+    .status,
+    .piece-en {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .file-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .name-field {
+      display: grid;
+      gap: 4px;
+      min-width: 210px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .name-field input {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      outline: none;
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    .name-field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgb(239 182 65 / 18%);
+    }
+
+    .btn {
+      min-height: 38px;
+      padding: 7px 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+    }
+
+    .btn:hover {
+      border-color: var(--line-strong);
+      background: var(--panel-raised);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      border-color: #73551b;
+      background: var(--accent);
+      color: #231a08;
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      border-color: var(--accent);
+      background: #ffc953;
+    }
+
+    .btn[disabled] {
+      opacity: 0.38;
+      cursor: default;
+      transform: none;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 188px minmax(340px, 1fr) 306px;
+      align-items: start;
+      gap: 14px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgb(25 28 22 / 92%);
+      box-shadow: 0 18px 50px rgb(0 0 0 / 20%);
+    }
+
+    .piece-panel,
+    .preview-panel {
+      padding: 14px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .panel-head h2 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .piece-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .piece-tab {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .piece-tab:hover {
+      background: #20241c;
+    }
+
+    .piece-tab.is-active {
+      border-color: #6b551f;
+      background: var(--accent-soft);
+    }
+
+    .piece-tab canvas {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #11130f;
+      image-rendering: pixelated;
+    }
+
+    .piece-name {
+      display: grid;
+      gap: 1px;
+      font-size: 14px;
+    }
+
+    .piece-en {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+    }
+
+    .editor-panel {
+      min-width: 0;
+      padding: 16px;
+    }
+
+    .editor-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .editor-title {
+      display: grid;
+      gap: 2px;
+    }
+
+    .editor-title h2 {
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .tool-btn {
+      min-height: 34px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #181b15;
+      cursor: pointer;
+    }
+
+    .tool-btn:hover {
+      border-color: var(--line-strong);
+    }
+
+    .tool-btn[aria-pressed="true"] {
+      border-color: #776026;
+      background: var(--accent-soft);
+      color: #ffd77c;
+    }
+
+    .editor-stage {
+      display: grid;
+      place-items: center;
+      gap: 12px;
+      padding: clamp(12px, 3vw, 24px);
+      border-radius: 14px;
+      background:
+        linear-gradient(90deg, rgb(255 255 255 / 10%) 1px, transparent 1px),
+        linear-gradient(rgb(255 255 255 / 10%) 1px, transparent 1px),
+        #10130e;
+      background-size: 12px 12px;
+    }
+
+    .pixel-grid {
+      display: grid;
+      grid-template-columns: repeat(13, 1fr);
+      gap: 2px;
+      width: min(100%, 442px);
+      padding: 7px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #252a20;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .pixel {
+      aspect-ratio: 1;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 2px;
+      background: #171a14;
+      cursor: crosshair;
+    }
+
+    .pixel:hover {
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    .pixel[aria-pressed="true"] {
+      background: var(--text);
+    }
+
+    .pixel:focus-visible {
+      position: relative;
+      z-index: 1;
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .hint {
+      text-align: center;
+    }
+
+    .preview-panel {
+      display: grid;
+      gap: 16px;
+    }
+
+    .preview-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .preview-pair {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .preview-item {
+      display: grid;
+      justify-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .preview-cell {
+      display: grid;
+      place-items: center;
+      width: 94px;
+      height: 94px;
+      overflow: hidden;
+      border-radius: 5px;
+      box-shadow: inset 0 0 0 1px rgb(0 0 0 / 18%);
+    }
+
+    .preview-cell canvas {
+      width: 94px;
+      height: 94px;
+      image-rendering: pixelated;
+    }
+
+    .actual-pair {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 14px;
+      min-height: 31px;
+    }
+
+    .actual-item {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .actual-item canvas {
+      width: 15px;
+      height: 15px;
+      image-rendering: pixelated;
+      box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 20%);
+    }
+
+    .board-preview-wrap {
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #10130e;
+    }
+
+    .board-preview {
+      width: min(100%, 260px);
+      height: auto;
+      aspect-ratio: 1;
+      image-rendering: pixelated;
+    }
+
+    .status {
+      min-height: 34px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #151812;
+    }
+
+    .status[data-state="success"] {
+      color: #a8d883;
+    }
+
+    .status[data-state="error"] {
+      color: var(--danger);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1020px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .file-actions {
+        justify-content: flex-start;
+      }
+
+      .workspace {
+        grid-template-columns: 164px minmax(320px, 1fr);
+      }
+
+      .preview-panel {
+        grid-column: 1 / -1;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .preview-panel .status {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .app {
+        width: min(100% - 20px, 620px);
+        padding-top: 16px;
+      }
+
+      .file-actions,
+      .name-field {
+        width: 100%;
+      }
+
+      .workspace,
+      .preview-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .piece-list {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .piece-tab {
+        grid-template-columns: 30px 1fr;
+        padding: 6px;
+      }
+
+      .piece-tab canvas {
+        width: 28px;
+        height: 28px;
+      }
+
+      .pixel-grid {
+        gap: 1px;
+      }
+
+      .preview-panel {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="eyebrow">Xiaomiao Chess Lab</span>
+        <h1>棋子设计器</h1>
+        <p class="subtitle">13×13 像素 · 无底色 · 15×15 实机棋盘格</p>
+      </div>
+      <div class="file-actions">
+        <label class="name-field">
+          设计方案名称
+          <input id="designName" maxlength="48" value="小喵国际象棋">
+        </label>
+        <button class="btn btn-primary" id="saveJson" type="button">保存设计</button>
+        <button class="btn" id="importButton" type="button">导入设计</button>
+        <button class="btn" id="exportPng" type="button">导出 PNG</button>
+        <input class="hidden" id="importFile" type="file" accept=".json,application/json">
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel piece-panel" aria-label="棋子列表">
+        <div class="panel-head">
+          <h2>棋子</h2>
+          <span class="meta">6 种</span>
+        </div>
+        <div class="piece-list" id="pieceList"></div>
+      </aside>
+
+      <section class="panel editor-panel" aria-label="像素编辑器">
+        <div class="editor-head">
+          <div class="editor-title">
+            <h2 id="activeName">王</h2>
+            <p class="meta" id="activeMeta">KING · 13×13</p>
+          </div>
+          <span class="meta" id="pixelCount">0 / 169</span>
+        </div>
+
+        <div class="toolbar" aria-label="编辑工具">
+          <button class="tool-btn" id="drawTool" type="button" data-tool="draw" aria-pressed="true">画笔</button>
+          <button class="tool-btn" id="eraseTool" type="button" data-tool="erase" aria-pressed="false">橡皮</button>
+          <button class="tool-btn" id="mirrorButton" type="button">水平镜像</button>
+          <button class="tool-btn" id="clearButton" type="button">清空棋子</button>
+          <button class="tool-btn" id="undoButton" type="button" disabled>撤销</button>
+          <button class="tool-btn" id="redoButton" type="button" disabled>重做</button>
+          <button class="tool-btn" id="resetButton" type="button">恢复初始</button>
+        </div>
+
+        <div class="editor-stage">
+          <div class="pixel-grid" id="pixelGrid" role="grid" aria-label="13乘13棋子像素网格"></div>
+          <p class="hint">按住拖动绘制 · 右键擦除 · 键盘 Enter 切换像素</p>
+        </div>
+      </section>
+
+      <aside class="panel preview-panel" aria-label="实时预览">
+        <section class="preview-section">
+          <div class="panel-head">
+            <h2>当前棋子</h2>
+            <span class="meta">15px 棋格</span>
+          </div>
+          <div class="preview-pair">
+            <div class="preview-item">
+              <div class="preview-cell">
+                <canvas id="previewWhite" width="15" height="15" aria-label="白方棋子放大预览"></canvas>
+              </div>
+              <span>白方</span>
+            </div>
+            <div class="preview-item">
+              <div class="preview-cell">
+                <canvas id="previewBlack" width="15" height="15" aria-label="黑方棋子放大预览"></canvas>
+              </div>
+              <span>黑方</span>
+            </div>
+          </div>
+          <div class="actual-pair" aria-label="实际尺寸预览">
+            <div class="actual-item">
+              <canvas id="actualWhite" width="15" height="15" aria-label="白方棋子实际尺寸"></canvas>
+              <span>白方实机</span>
+            </div>
+            <div class="actual-item">
+              <canvas id="actualBlack" width="15" height="15" aria-label="黑方棋子实际尺寸"></canvas>
+              <span>黑方实机</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="preview-section">
+          <div class="panel-head">
+            <h2>棋盘实测</h2>
+            <span class="meta">8×8</span>
+          </div>
+          <div class="board-preview-wrap">
+            <canvas class="board-preview" id="boardPreview" width="120" height="120" aria-label="棋子实际尺寸棋盘预览"></canvas>
+          </div>
+        </section>
+
+        <div class="status" id="status" role="status" aria-live="polite">
+          修改会自动保存在本浏览器；点击“保存设计”可导出文件。
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const PIECES = [
+        { key: "king", name: "王", en: "KING" },
+        { key: "queen", name: "后", en: "QUEEN" },
+        { key: "rook", name: "车", en: "ROOK" },
+        { key: "bishop", name: "相", en: "BISHOP" },
+        { key: "knight", name: "马", en: "KNIGHT" },
+        { key: "pawn", name: "兵", en: "PAWN" }
+      ];
+
+      const DEFAULT_ICONS = {
+        king: [
+          "......#......",
+          "....#####....",
+          "......#......",
+          "..##..#..##..",
+          ".###########.",
+          ".###########.",
+          "..#########..",
+          "...#######...",
+          "...#######...",
+          "....#####....",
+          "..#########..",
+          ".###########.",
+          "#############"
+        ],
+        queen: [
+          "..#...#...#..",
+          "..##.#.#.##..",
+          ".###########.",
+          "..#.##.##.#..",
+          ".###########.",
+          "..#########..",
+          "...#######...",
+          "....#####....",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          "#############",
+          "............."
+        ],
+        rook: [
+          ".............",
+          ".............",
+          "..##.###.##..",
+          "..#########..",
+          "..#########..",
+          "...#######...",
+          "...#######...",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          ".###########.",
+          "#############",
+          "............."
+        ],
+        bishop: [
+          ".............",
+          "......#......",
+          ".....###.....",
+          "....#.###....",
+          "...###.###...",
+          "...####.##...",
+          "..######.##..",
+          "....#####....",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          ".###########.",
+          "#############"
+        ],
+        knight: [
+          "....##.##....",
+          "...######....",
+          "..#######....",
+          ".#####.#.....",
+          "######..###..",
+          "#######..###.",
+          "#########....",
+          "#########....",
+          ".########....",
+          "..#######....",
+          "...#####.....",
+          "..#######....",
+          ".#########..."
+        ],
+        pawn: [
+          ".............",
+          ".............",
+          ".............",
+          ".............",
+          "......#......",
+          ".....###.....",
+          "....#####....",
+          "...#######...",
+          "..#########..",
+          ".###########.",
+          ".............",
+          ".............",
+          "............."
+        ]
+      };
+
+      const STORAGE_KEY = "xiaomiao-chess-piece-design-v1";
+      const clone = (value) => JSON.parse(JSON.stringify(value));
+
+      let state = {
+        name: "小喵国际象棋",
+        active: "king",
+        tool: "draw",
+        icons: clone(DEFAULT_ICONS),
+        history: [],
+        future: []
+      };
+
+      const byId = (id) => document.getElementById(id);
+      const designName = byId("designName");
+      const pieceList = byId("pieceList");
+      const pixelGrid = byId("pixelGrid");
+      const activeName = byId("activeName");
+      const activeMeta = byId("activeMeta");
+      const pixelCount = byId("pixelCount");
+      const status = byId("status");
+      const undoButton = byId("undoButton");
+      const redoButton = byId("redoButton");
+      const importFile = byId("importFile");
+      const previewCanvases = {
+        white: byId("previewWhite"),
+        black: byId("previewBlack"),
+        actualWhite: byId("actualWhite"),
+        actualBlack: byId("actualBlack")
+      };
+
+      let painting = false;
+      let erasing = false;
+      let strokeSnapshot = null;
+      let strokeRecorded = false;
+      let autosaveTimer = 0;
+      let previewFrame = 0;
+
+      function setStatus(message, stateName = "") {
+        status.textContent = message;
+        status.dataset.state = stateName;
+      }
+
+      function cloneIcons(icons = state.icons) {
+        return Object.fromEntries(Object.entries(icons).map(([key, rows]) => [key, rows.slice()]));
+      }
+
+      function normalizePieces(input) {
+        if (!input || typeof input !== "object") return null;
+        const normalized = {};
+        for (const piece of PIECES) {
+          const rows = input[piece.key];
+          if (!Array.isArray(rows) || rows.length !== 13) return null;
+          if (rows.some((row) => typeof row !== "string" || !/^[#.]{13}$/.test(row))) return null;
+          normalized[piece.key] = rows.slice();
+        }
+        return normalized;
+      }
+
+      function readAutosave() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          const pieces = normalizePieces(saved && saved.pieces);
+          if (!pieces) return;
+          state.icons = pieces;
+          if (saved.name) state.name = String(saved.name).slice(0, 48);
+        } catch (_) {
+          // Ignore invalid browser autosave data.
+        }
+      }
+
+      function scheduleAutosave() {
+        clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(() => {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+              format: "xiaomiao-chess-piece-design",
+              version: 1,
+              name: state.name,
+              pieces: state.icons
+            }));
+            setStatus("已自动保存到本浏览器。需要文件请点击“保存设计”。", "success");
+          } catch (_) {
+            setStatus("浏览器自动保存不可用，请手动保存设计文件。", "error");
+          }
+        }, 260);
+      }
+
+      function drawingSnapshot() {
+        return cloneIcons(state.icons);
+      }
+
+      function remember(nextIcons) {
+        state.history.push(nextIcons);
+        if (state.history.length > 60) state.history.shift();
+        state.future.length = 0;
+        updateHistoryButtons();
+      }
+
+      function restoreIcons(icons) {
+        state.icons = cloneIcons(icons);
+        renderAll();
+        scheduleAutosave();
+      }
+
+      function updateHistoryButtons() {
+        undoButton.disabled = state.history.length === 0;
+        redoButton.disabled = state.future.length === 0;
+      }
+
+      function updateToolButtons() {
+        document.querySelectorAll("[data-tool]").forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.tool === state.tool));
+        });
+      }
+
+      function setPixel(row, col, erase) {
+        const rows = state.icons[state.active];
+        const pixels = rows[row].split("");
+        const next = erase ? "." : "#";
+        if (pixels[col] === next) return false;
+        pixels[col] = next;
+        rows[row] = pixels.join("");
+        updatePixelButton(row, col);
+        requestPreviewRender();
+        scheduleAutosave();
+        return true;
+      }
+
+      function pixelButton(row, col) {
+        return pixelGrid.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+      }
+
+      function updatePixelButton(row, col) {
+        const button = pixelButton(row, col);
+        if (!button) return;
+        const filled = state.icons[state.active][row][col] === "#";
+        button.setAttribute("aria-pressed", String(filled));
+        button.setAttribute("aria-label", `第 ${row + 1} 行，第 ${col + 1} 列，${filled ? "已填充" : "空白"}`);
+        updatePixelCount();
+      }
+
+      function updatePixelCount() {
+        const count = state.icons[state.active].join("").replace(/\./g, "").length;
+        pixelCount.textContent = `${count} / 169`;
+      }
+
+      function renderEditor() {
+        pixelGrid.replaceChildren();
+        const rows = state.icons[state.active];
+        rows.forEach((line, row) => {
+          line.split("").forEach((value, col) => {
+            const button = document.createElement("button");
+            button.className = "pixel";
+            button.type = "button";
+            button.dataset.row = String(row);
+            button.dataset.col = String(col);
+            button.setAttribute("role", "gridcell");
+            button.setAttribute("aria-pressed", String(value === "#"));
+            button.setAttribute("aria-label", `第 ${row + 1} 行，第 ${col + 1} 列，${value === "#" ? "已填充" : "空白"}`);
+            button.addEventListener("click", (event) => {
+              if (event.detail !== 0) return;
+              const before = drawingSnapshot();
+              if (setPixel(row, col, state.tool === "erase")) {
+                remember(before);
+              }
+            });
+            pixelGrid.append(button);
+          });
+        });
+        updatePixelCount();
+      }
+
+      function drawIcon(ctx, pixels, offsetX, offsetY, color, scale = 1) {
+        ctx.fillStyle = color;
+        pixels.forEach((row, y) => {
+          row.split("").forEach((value, x) => {
+            if (value === "#") {
+              ctx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+            }
+          });
+        });
+      }
+
+      function drawCell(canvas, pieceKey, side) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = side === "white" ? "#d6d6ad" : "#6b6b6b";
+        ctx.fillRect(0, 0, 15, 15);
+        drawIcon(ctx, state.icons[pieceKey], 1, 1, side === "white" ? "#ffffff" : "#000000");
+      }
+
+      function drawMini(canvas, pieceKey) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, 13, 13);
+        drawIcon(ctx, state.icons[pieceKey], 0, 0, "#f1ead9");
+      }
+
+      function renderPieceList() {
+        pieceList.replaceChildren();
+        PIECES.forEach((piece) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `piece-tab${state.active === piece.key ? " is-active" : ""}`;
+          button.dataset.piece = piece.key;
+          button.setAttribute("aria-pressed", String(state.active === piece.key));
+
+          const canvas = document.createElement("canvas");
+          canvas.width = 13;
+          canvas.height = 13;
+          canvas.setAttribute("aria-hidden", "true");
+          drawMini(canvas, piece.key);
+
+          const text = document.createElement("span");
+          text.className = "piece-name";
+          const name = document.createElement("span");
+          name.textContent = piece.name;
+          const en = document.createElement("span");
+          en.className = "piece-en";
+          en.textContent = piece.en;
+          text.append(name, en);
+          button.append(canvas, text);
+          button.addEventListener("click", () => {
+            state.active = piece.key;
+            renderPieceList();
+            renderEditor();
+            renderPreviewNow();
+          });
+          pieceList.append(button);
+        });
+      }
+
+      function drawBoard() {
+        const canvas = byId("boardPreview");
+        const ctx = canvas.getContext("2d");
+        const start = [
+          ["rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"],
+          ["pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn"],
+          [],
+          [],
+          [],
+          [],
+          ["pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn"],
+          ["rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"]
+        ];
+        ctx.clearRect(0, 0, 120, 120);
+        for (let row = 0; row < 8; row += 1) {
+          for (let col = 0; col < 8; col += 1) {
+            const x = col * 15;
+            const y = row * 15;
+            ctx.fillStyle = (row + col) % 2 === 0 ? "#d6d6ad" : "#6b6b6b";
+            ctx.fillRect(x, y, 15, 15);
+            const piece = start[row][col];
+            if (piece) {
+              const side = row < 2 ? "black" : "white";
+              drawIcon(ctx, state.icons[piece], x + 1, y + 1, side === "white" ? "#ffffff" : "#000000");
+            }
+          }
+        }
+      }
+
+      function renderPreviewNow() {
+        cancelAnimationFrame(previewFrame);
+        previewFrame = 0;
+        const piece = PIECES.find((item) => item.key === state.active);
+        activeName.textContent = piece.name;
+        activeMeta.textContent = `${piece.en} · 13×13`;
+        drawCell(previewCanvases.white, piece.key, "white");
+        drawCell(previewCanvases.black, piece.key, "black");
+        drawCell(previewCanvases.actualWhite, piece.key, "white");
+        drawCell(previewCanvases.actualBlack, piece.key, "black");
+        drawBoard();
+      }
+
+      function requestPreviewRender() {
+        if (previewFrame) return;
+        previewFrame = requestAnimationFrame(renderPreviewNow);
+      }
+
+      function renderAll() {
+        designName.value = state.name;
+        renderPieceList();
+        renderEditor();
+        renderPreviewNow();
+        updateToolButtons();
+        updateHistoryButtons();
+      }
+
+      function pixelsFromPoint(event) {
+        const element = document.elementFromPoint(event.clientX, event.clientY);
+        const pixel = element && element.closest(".pixel");
+        return pixel && pixelGrid.contains(pixel) ? pixel : null;
+      }
+
+      function paintAt(event) {
+        const pixel = pixelsFromPoint(event);
+        if (!pixel) return;
+        const row = Number(pixel.dataset.row);
+        const col = Number(pixel.dataset.col);
+        if (!setPixel(row, col, erasing)) return;
+        if (!strokeRecorded) {
+          remember(strokeSnapshot);
+          strokeRecorded = true;
+        }
+      }
+
+      pixelGrid.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0 && event.button !== 2) return;
+        event.preventDefault();
+        painting = true;
+        erasing = event.button === 2 || state.tool === "erase";
+        strokeSnapshot = drawingSnapshot();
+        strokeRecorded = false;
+        pixelGrid.setPointerCapture(event.pointerId);
+        paintAt(event);
+      });
+
+      pixelGrid.addEventListener("pointermove", (event) => {
+        if (painting) paintAt(event);
+      });
+
+      const stopPainting = () => {
+        painting = false;
+        strokeSnapshot = null;
+        strokeRecorded = false;
+      };
+
+      pixelGrid.addEventListener("pointerup", stopPainting);
+      pixelGrid.addEventListener("pointercancel", stopPainting);
+      pixelGrid.addEventListener("lostpointercapture", stopPainting);
+      pixelGrid.addEventListener("contextmenu", (event) => event.preventDefault());
+
+      document.querySelectorAll("[data-tool]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.tool = button.dataset.tool;
+          updateToolButtons();
+        });
+      });
+
+      byId("mirrorButton").addEventListener("click", () => {
+        const before = drawingSnapshot();
+        state.icons[state.active] = state.icons[state.active].map((row) => row.split("").reverse().join(""));
+        remember(before);
+        renderEditor();
+        requestPreviewRender();
+        scheduleAutosave();
+      });
+
+      byId("clearButton").addEventListener("click", () => {
+        const before = drawingSnapshot();
+        state.icons[state.active] = Array(13).fill(".............");
+        remember(before);
+        renderEditor();
+        requestPreviewRender();
+        scheduleAutosave();
+      });
+
+      byId("resetButton").addEventListener("click", () => {
+        const before = drawingSnapshot();
+        state.icons = clone(DEFAULT_ICONS);
+        remember(before);
+        renderAll();
+        scheduleAutosave();
+        setStatus("已恢复为初始棋子设计，可使用“撤销”返回。", "success");
+      });
+
+      undoButton.addEventListener("click", () => {
+        if (!state.history.length) return;
+        state.future.push(drawingSnapshot());
+        restoreIcons(state.history.pop());
+      });
+
+      redoButton.addEventListener("click", () => {
+        if (!state.future.length) return;
+        state.history.push(drawingSnapshot());
+        restoreIcons(state.future.pop());
+      });
+
+      designName.addEventListener("input", () => {
+        state.name = designName.value.trim() || "未命名设计";
+        scheduleAutosave();
+      });
+
+      function safeFileName(value) {
+        return (value || "chess-piece-design")
+          .replace(/[\\/:*?"<>|]+/g, "-")
+          .replace(/\s+/g, "-")
+          .slice(0, 60);
+      }
+
+      function downloadBlob(blob, fileName) {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = fileName;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+      }
+
+      byId("saveJson").addEventListener("click", () => {
+        const payload = {
+          format: "xiaomiao-chess-piece-design",
+          version: 1,
+          name: state.name,
+          width: 13,
+          height: 13,
+          filled: "#",
+          empty: ".",
+          pieces: state.icons,
+          savedAt: new Date().toISOString()
+        };
+        downloadBlob(
+          new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+          `${safeFileName(state.name)}.json`
+        );
+        setStatus("设计文件已导出，可随时通过“导入设计”继续编辑。", "success");
+      });
+
+      byId("importButton").addEventListener("click", () => importFile.click());
+
+      importFile.addEventListener("change", async () => {
+        const file = importFile.files && importFile.files[0];
+        importFile.value = "";
+        if (!file) return;
+        try {
+          const data = JSON.parse(await file.text());
+          const pieces = normalizePieces(data.pieces);
+          if (!pieces) throw new Error("棋子数据必须是 6 组 13×13 的 #/. 网格。");
+          const before = drawingSnapshot();
+          state.icons = pieces;
+          state.name = String(data.name || file.name.replace(/\.json$/i, "") || "导入的设计").slice(0, 48);
+          remember(before);
+          renderAll();
+          scheduleAutosave();
+          setStatus(`已导入“${state.name}”。`, "success");
+        } catch (error) {
+          setStatus(`导入失败：${error.message}`, "error");
+        }
+      });
+
+      function drawExportPiece(ctx, pieceKey, x, y, side, scale) {
+        ctx.fillStyle = side === "white" ? "#d6d6ad" : "#6b6b6b";
+        ctx.fillRect(x, y, 15 * scale, 15 * scale);
+        drawIcon(ctx, state.icons[pieceKey], x + scale, y + scale, side === "white" ? "#ffffff" : "#000000", scale);
+      }
+
+      byId("exportPng").addEventListener("click", () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1200;
+        canvas.height = 820;
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "#10120e";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#f1ead9";
+        ctx.font = '500 38px "Microsoft YaHei", "PingFang SC", sans-serif';
+        ctx.fillText(state.name, 54, 64);
+        ctx.fillStyle = "#9d9b8f";
+        ctx.font = '16px "Microsoft YaHei", "PingFang SC", sans-serif';
+        ctx.fillText("13×13 像素 · 15×15 棋格 · 无底色前景图标", 56, 94);
+
+        PIECES.forEach((piece, index) => {
+          const col = index % 3;
+          const row = Math.floor(index / 3);
+          const cardX = 48 + col * 372;
+          const cardY = 126 + row * 326;
+          const cardW = 342;
+          const cardH = 292;
+
+          ctx.fillStyle = "#191c16";
+          ctx.strokeStyle = "#343a2d";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, cardW, cardH, 18);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = "#f1ead9";
+          ctx.font = '500 24px "Microsoft YaHei", "PingFang SC", sans-serif';
+          ctx.fillText(`${piece.name}  ${piece.en}`, cardX + 22, cardY + 38);
+
+          drawExportPiece(ctx, piece.key, cardX + 26, cardY + 62, "white", 6);
+          drawExportPiece(ctx, piece.key, cardX + 168, cardY + 62, "black", 6);
+
+          ctx.fillStyle = "#9d9b8f";
+          ctx.font = '14px "Microsoft YaHei", "PingFang SC", sans-serif';
+          ctx.fillText("白方", cardX + 65, cardY + 180);
+          ctx.fillText("黑方", cardX + 207, cardY + 180);
+
+          drawExportPiece(ctx, piece.key, cardX + 35, cardY + 202, "white", 1);
+          drawExportPiece(ctx, piece.key, cardX + 177, cardY + 202, "black", 1);
+          ctx.fillStyle = "#9d9b8f";
+          ctx.font = '13px "Microsoft YaHei", "PingFang SC", sans-serif';
+          ctx.fillText("实机尺寸 15×15", cardX + 72, cardY + 220);
+        });
+
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          downloadBlob(blob, `${safeFileName(state.name)}-PNG.png`);
+          setStatus("PNG 设计图已导出。", "success");
+        }, "image/png");
+      });
+
+      document.addEventListener("keydown", (event) => {
+        const editingText = event.target instanceof HTMLInputElement;
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+          event.preventDefault();
+          byId("saveJson").click();
+          return;
+        }
+        if (editingText) return;
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+          event.preventDefault();
+          (event.shiftKey ? redoButton : undoButton).click();
+        } else if (event.key.toLowerCase() === "d") {
+          state.tool = "draw";
+          updateToolButtons();
+        } else if (event.key.toLowerCase() === "e") {
+          state.tool = "erase";
+          updateToolButtons();
+        }
+      });
+
+      readAutosave();
+      renderAll();
+    })();
+  </script>
+</body>
+</html>

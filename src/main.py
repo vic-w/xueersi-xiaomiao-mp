@@ -53,13 +53,13 @@ menuOptions = {
         {
             "name": "Games",
             "subMenus": [
+                {"name": "国际象棋", "packageName": "games.chess"},
                 {"name": "秒表", "packageName": "games.stopwatch", "defer": True},
                 {"name": "俄罗斯方块", "packageName": "games.tetris"},
                 {"name": "恐龙快跑", "packageName": "games.dino_run"},
                 {"name": "超级玛丽", "packageName": "games.mario_run"},
                 {"name": "极速公路", "packageName": "games.fc_racing"},
                 {"name": "毁灭公爵", "packageName": "games.doom"},
-                {"name": "国际象棋", "packageName": "games.chess"},
                 {"name": "推箱子", "packageName": "games.sokoban"},
                 {"name": "猜数字", "packageName": "games.guess_number"},
                 {"name": "迷宫", "packageName": "games.maze"},
