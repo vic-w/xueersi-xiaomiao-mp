@@ -1,0 +1,3 @@
+C3D_MOD_DIR := $(USERMOD_DIR)
+SRC_USERMOD += $(C3D_MOD_DIR)/c3d.c
+SRC_USERMOD += $(C3D_MOD_DIR)/c3d_render.c

@@ -63,6 +63,7 @@ menuOptions = {
                 {"name": "推箱子", "packageName": "games.sokoban"},
                 {"name": "猜数字", "packageName": "games.guess_number"},
                 {"name": "迷宫", "packageName": "games.maze"},
+                {"name": "立方体屏保", "packageName": "games.cube_screensaver"},
                 {"name": "上级菜单", "type": "back"},
             ]
         },

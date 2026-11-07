@@ -165,6 +165,12 @@ WiFi 凭据保存在 `wifi_config.txt`，自动重连。
 
 ![settings](images/settings.jpg)
 
+## C 语言 3D 渲染
+
+立方体屏保支持 `c3d` 原生模块：用 C 完成旋转、投影、面排序和 RGB565 绘制，MicroPython 负责动画与按键。模型可通过 `Software3D.prepare_mesh()` 提前准备，供每帧重复使用。未编入 `c3d` 的固件会自动使用纯 Python 渲染，屏幕顶部显示当前后端。
+
+源码、接口、固件构建与测试方法见 [native/c3d/README.md](native/c3d/README.md)。原生模块需要重新编译固件，仅上传 Python 文件不会启用 C 后端。
+
 ## 技术细节
 
 - **显示**：framebuf 帧缓冲 + SPI 传输。`disp.text()` = 8x8 ASCII 字体，`ed.text()` = 16px BMF 中文字体
@@ -185,4 +191,6 @@ WiFi 凭据保存在 `wifi_config.txt`，自动重连。
 | `backup-bin` | 备份整片 Flash |
 | `restore-bin` | 恢复 Flash |
 | `check-deps` | 检查工具依赖 |
+| `build-c3d-firmware` | 从 `MICROPYTHON_DIR` 构建含 C3D 的 ESP32/SPIRAM 固件 |
+| `test-c3d` | 在电脑上编译并运行 C3D 测试，需要 GCC 和 Python 3 |
 | `help` | 列出所有命令 |

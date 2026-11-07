@@ -1,5 +1,9 @@
 PORT ?= /dev/cu.usbmodem2113301
 FILE ?= src/main.py
+MICROPYTHON_DIR ?=
+MICROPYTHON_BOARD ?= ESP32_GENERIC
+MICROPYTHON_BOARD_VARIANT ?= SPIRAM
+PYTHON ?= python3
 
 ## Flash MicroPython firmware via serial (erases all data first)
 write-flash-micron-python:
@@ -55,3 +59,18 @@ check-deps:
 	else \
 		echo "All dependencies satisfied."; \
 	fi
+
+.PHONY: build-c3d-firmware test-c3d
+
+## Run C3D rasterizer and Python fallback tests on the host
+test-c3d:
+	$(PYTHON) native/c3d/tests/run_native_tests.py
+	$(PYTHON) native/c3d/tests/test_python_fallback.py
+
+## Build MicroPython v1.28.0 ESP32/SPIRAM firmware with the C3D renderer
+build-c3d-firmware:
+	@test -f "$(MICROPYTHON_DIR)/ports/esp32/Makefile" || { echo "Set MICROPYTHON_DIR to your MicroPython v1.28.0 source tree."; exit 2; }
+	@command -v idf.py >/dev/null || { echo "Activate ESP-IDF v5.5.1 with export.sh first."; exit 2; }
+	$(MAKE) -C "$(MICROPYTHON_DIR)/mpy-cross"
+	$(MAKE) -C "$(MICROPYTHON_DIR)/ports/esp32" submodules BOARD=$(MICROPYTHON_BOARD) BOARD_VARIANT=$(MICROPYTHON_BOARD_VARIANT) USER_C_MODULES="$(CURDIR)/native/micropython.cmake"
+	$(MAKE) -C "$(MICROPYTHON_DIR)/ports/esp32" BOARD=$(MICROPYTHON_BOARD) BOARD_VARIANT=$(MICROPYTHON_BOARD_VARIANT) USER_C_MODULES="$(CURDIR)/native/micropython.cmake"
